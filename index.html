@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Saldo Arisan Online</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+    body {
+      margin: 0; padding: 0; background: #f8f9fa;
+      display: flex; flex-direction: column; align-items: center;
+      min-height: 100vh; padding: 20px;
+    }
+    .container {
+      background: #fff; max-width: 500px; width: 100%; padding: 30px;
+      margin-top: 40px; border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h1 { font-weight: 600; margin-bottom: 10px; }
+    small { display: block; margin-bottom: 20px; color: #888; }
+    #saldo {
+      font-size: 48px; font-weight: 600;
+      color: #1abc9c; margin-bottom: 30px;
+    }
+    .button {
+      background-color: #3498db; color: white; border: none;
+      padding: 14px 24px; font-size: 16px;
+      border-radius: 8px; cursor: pointer; margin: 5px;
+      transition: background-color 0.3s;
+    }
+    .button:hover { background-color: #2980b9; }
+    #countdown {
+      margin-top: 40px; font-size: 18px; color: #e67e22;
+    }
+    #arisanText {
+      font-size: 16px; margin-top: 10px; color: #27ae60;
+    }
+    .modal {
+      display: none; position: fixed; z-index: 100;
+      left: 0; top: 0; width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.4);
+      justify-content: center; align-items: center;
+    }
+    .modal-content {
+      background-color: white; border-radius: 12px; padding: 20px;
+      width: 90%; max-width: 400px;
+    }
+    .close {
+      color: #e74c3c; float: right; font-size: 24px; font-weight: bold;
+      cursor: pointer;
+    }
+    ul { padding-left: 20px; text-align: left; line-height: 1.8; }
+    input[type="text"], input[type="password"] {
+      width: 100%; padding: 10px; margin: 10px 0;
+      border: 1px solid #ccc; border-radius: 6px;
+    }
+    .modal-form button { width: 100%; margin-top: 10px; }
+    .undi-button {
+      margin-top: 20px;
+      background-color: #bdc3c7;
+    }
+    .undi-button.aktif {
+      background-color: #27ae60;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Saldo Arisan</h1>
+    <small>Sampai Hari Ini</small>
+    <div id="saldo">Rp 0</div>
+    <button class="button" onclick="tambahSaldo()">Tambah Saldo</button>
+    <button class="button" onclick="bukaModal()">Daftar Anggota</button>
+    <div id="countdown"></div>
+    <div id="arisanText">ARISAN DIUNDI</div>
+    <button id="undiBtn" class="button undi-button" onclick="undiArisan()" disabled>Undi Arisan</button>
+  </div>
+
+  <div id="anggotaModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="tutupModal()">&times;</span>
+      <h3>Daftar Anggota</h3>
+      <ul id="listAnggota"></ul>
+      <div class="modal-form">
+        <input type="text" id="namaBaru" placeholder="Nama anggota baru" />
+        <input type="password" id="passwordInput" placeholder="Masukkan password" />
+        <button class="button" onclick="tambahAnggota()">Tambah Anggota</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCat8OmZxsKgVl2FNhZptbCnnof1Jc99TE",
+      authDomain: "tools-arisan.firebaseapp.com",
+      databaseURL: "https://tools-arisan-default-rtdb.firebaseio.com",
+      projectId: "tools-arisan",
+      storageBucket: "tools-arisan.appspot.com",
+      messagingSenderId: "712064689382",
+      appId: "1:712064689382:web:6eb55c11db796ffb698727",
+      measurementId: "G-QCXQS1YC1J"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const pass = "Akubutuh99";
+
+    async function getData() {
+      const snapshot = await db.ref('/').get();
+      const data = snapshot.val() || {};
+      return {
+        saldo: data.saldo || 0,
+        anggota: data.anggota || [],
+        pemenang: data.pemenang || null
+      };
+    }
+
+    function formatRupiah(angka) {
+      return "Rp " + angka.toLocaleString('id-ID');
+    }
+
+    async function render() {
+      const { saldo, anggota } = await getData();
+      document.getElementById("saldo").innerText = formatRupiah(saldo);
+      const list = document.getElementById("listAnggota");
+      list.innerHTML = "";
+      anggota.forEach(n => {
+        const li = document.createElement("li");
+        li.textContent = n;
+        list.appendChild(li);
+      });
+    }
+
+    async function tambahSaldo() {
+      const input = prompt("Masukkan password untuk tambah saldo:");
+      if (input !== pass) return alert("Password salah!");
+      const { saldo } = await getData();
+      await db.ref('/').update({ saldo: saldo + 5000 });
+      render();
+    }
+
+    function bukaModal() {
+      render();
+      document.getElementById("anggotaModal").style.display = "flex";
+    }
+
+    function tutupModal() {
+      document.getElementById("anggotaModal").style.display = "none";
+    }
+
+    async function tambahAnggota() {
+      const nama = document.getElementById("namaBaru").value.trim();
+      const kunci = document.getElementById("passwordInput").value;
+      if (!nama) return alert("Nama kosong");
+      if (kunci !== pass) return alert("Password salah!");
+      const { anggota } = await getData();
+      anggota.push(nama);
+      await db.ref('/').update({ anggota });
+      document.getElementById("namaBaru").value = "";
+      document.getElementById("passwordInput").value = "";
+      render();
+    }
+
+    async function undiArisan() {
+      const input = prompt("Masukkan password untuk mengundi:");
+      if (input !== pass) return alert("Password salah!");
+      const { anggota } = await getData();
+      if (anggota.length === 0) return alert("Belum ada anggota!");
+      const pemenang = anggota[Math.floor(Math.random() * anggota.length)];
+      await db.ref('/').update({ pemenang });
+      alert("Pemenang arisan: " + pemenang);
+    }
+
+    // Countdown
+    const countdownTarget = new Date("June 30, 2025 00:00:00").getTime();
+    function updateCountdown() {
+      const now = new Date().getTime();
+      const dist = countdownTarget - now;
+      const btn = document.getElementById("undiBtn");
+
+      if (dist <= 0) {
+        document.getElementById("countdown").innerText = "Waktu telah habis!";
+        btn.disabled = false;
+        btn.classList.add("aktif");
+        return;
+      }
+      const d = Math.floor(dist / (1000 * 60 * 60 * 24));
+      const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((dist % (1000 * 60)) / 1000);
+      document.getElementById("countdown").innerText =
+        `Hitung mundur: ${d} hari ${h} jam ${m} menit ${s} detik`;
+    }
+
+    render();
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+    window.onclick = function(e) {
+      const modal = document.getElementById("anggotaModal");
+      if (e.target === modal) modal.style.display = "none";
+    }
+  </script>
+</body>
+</html>
+
